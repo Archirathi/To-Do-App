@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            width: 80%;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        input {
+            margin: 10px;
+            padding: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #000000;
+            padding: 8px;
+        }
+        th {
+            background-color: #cface8;
+            cursor: pointer;
+        }
+        .actions button {
+            margin: 5px;
+        }
+        button {
+            background-color: #cface8;
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('todo-form');
+            const nameInput = document.getElementById('name');
+            const rollNumberInput = document.getElementById('roll-number');
+            const ageInput = document.getElementById('age');
+            const emailInput = document.getElementById('email');
+            const addButton = document.getElementById('add-button');
+            const updateButton = document.getElementById('update-button');
+            const todoTableBody = document.getElementById('todo-tbody');
+            const headers = document.querySelectorAll('th[data-key]');
+
+            let todos = [];
+            let editingIndex = null;
+            let ascending = true;
+            let currentSortColumn = null;
+
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+
+                if (!validateForm()) {
+                    return;
+                }
+
+                const todo = {
+                    index: editingIndex !== null ? todos[editingIndex].index : generateIndex(),
+                    name: nameInput.value,
+                    rollNumber: rollNumberInput.value,
+                    age: ageInput.value,
+                    email: emailInput.value
+                };
+
+                if (editingIndex !== null) {
+                    todos[editingIndex] = todo;
+                    editingIndex = null;
+                } else {
+                    todos.push(todo);
+                }
+
+                form.reset();
+                addButton.style.display = 'inline-block';
+                updateButton.style.display = 'none';
+                renderTable(todos);
+            });
+
+            updateButton.addEventListener('click', () => {
+                if (!validateForm()) {
+                    return;
+                }
+
+                const todo = {
+                    index: todos[editingIndex].index,
+                    name: nameInput.value,
+                    rollNumber: rollNumberInput.value,
+                    age: ageInput.value,
+                    email: emailInput.value
+                };
+
+                if (editingIndex !== null) {
+                    todos[editingIndex] = todo;
+                    editingIndex = null;
+                } else {
+                    alert('No entry selected for update.');
+                    return;
+                }
+
+                form.reset();
+                addButton.style.display = 'inline-block';
+                updateButton.style.display = 'none';
+                renderTable(todos);
+            });
+
+            headers.forEach(header => {
+                header.addEventListener('click', () => {
+                    const columnKey = header.getAttribute('data-key');
+                    sortTableByColumn(columnKey);
+                });
+            });
+
+            function generateIndex() {
+                return todos.length ? Math.max(...todos.map(todo => todo.index)) + 1 : 1;
+            }
+
+            function validateForm() {
+                if (nameInput.value.trim() === '') {
+                    alert('Please enter a name.');
+                    return false;
+                }
+                if (rollNumberInput.value.trim() === '') {
+                    alert('Please enter a roll number.');
+                    return false;
+                }
+                const age = parseInt(ageInput.value, 10);
+                if (ageInput.value === '' || isNaN(age) || age <= 0 || age > 100) {
+                    alert('Please enter a valid age (1-100).');
+                    return false;
+                }
+                if (!validateEmail(emailInput.value)) {
+                    alert('Please enter a valid email.');
+                    return false;
+                }
+                return true;
+            }
+
+            function validateEmail(email) {
+                const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return re.test(String(email).toLowerCase());
+            }
+
+            function renderTable(todosToRender) {
+                todoTableBody.innerHTML = '';
+                todosToRender.forEach((todo, index) => {
+                    const row = document.createElement('tr');
+
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${todo.name}</td>
+                        <td>${todo.rollNumber}</td>
+                        <td>${todo.age}</td>
+                        <td>${todo.email}</td>
+                        <td class="actions">
+                            <button onclick="edit(${index})">Edit</button>
+                            <button onclick="remove(${index})">Delete</button>
+                            <button onclick="reorder(${index})">Reorder</button>
+                        </td>
+                    `;
+
+                    todoTableBody.appendChild(row);
+                });
+            }
+
+            function sortTableByColumn(columnKey) {
+                if (currentSortColumn === columnKey) {
+                    ascending = !ascending;
+                } else {
+                    ascending = true;
+                    currentSortColumn = columnKey;
+                }
+
+                todos.sort((a, b) => {
+                    if (!isNaN(a[columnKey]) && !isNaN(b[columnKey])) {
+                        return ascending ? a[columnKey] - b[columnKey] : b[columnKey] - a[columnKey];
+                    } else {
+                        const textA = a[columnKey].toLowerCase();
+                        const textB = b[columnKey].toLowerCase();
+                        if (textA < textB) return ascending ? -1 : 1;
+                        if (textA > textB) return ascending ? 1 : -1;
+                        return 0;
+                    }
+                });
+
+                renderTable(todos);
+            }
+
+            window.edit = (index) => {
+                const todo = todos[index];
+                nameInput.value = todo.name;
+                rollNumberInput.value = todo.rollNumber;
+                ageInput.value = todo.age;
+                emailInput.value = todo.email;
+
+                editingIndex = index;
+                addButton.style.display = 'none';
+                updateButton.style.display = 'inline-block';
+            };
+
+            window.remove = (index) => {
+                todos.splice(index, 1);
+                renderTable(todos);
+            };
+
+            window.reorder = (index) => {
+                const toIndex = prompt('Enter index to which to reorder:');
+
+                if (toIndex === null) {
+                    return; // User canceled
+                }
+
+                const to = parseInt(toIndex, 10);
+
+                if (isNaN(to) || to < 1 || to > todos.length) {
+                    alert('Invalid index range.');
+                    return;
+                }
+
+                const movedTodo = todos.splice(index, 1)[0];
+                todos.splice(to - 1, 0, movedTodo);
+
+                renderTable(todos);
+            };
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>To-Do App</h1>
+        <form id="todo-form">
+            <input type="text" id="name" placeholder="Name" required>
+            <input type="text" id="roll-number" placeholder="Roll Number" required>
+            <input type="number" id="age" placeholder="Age" required>
+            <input type="email" id="email" placeholder="Email" required>
+            <button type="submit" id="add-button">Add</button>
+            <button type="button" id="update-button" style="display: none;">Update</button>
+        </form>
+        
+        <table id="todo-table">
+            <thead>
+                <tr>
+                    <th data-key="index">Index</th>
+                    <th data-key="name">Name</th>
+                    <th data-key="rollNumber">Roll Number</th>
+                    <th data-key="age">Age</th>
+                    <th data-key="email">Email</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="todo-tbody">
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
